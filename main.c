@@ -13,6 +13,7 @@
  * @return 0 in case of success, -1 else
  * Function is already provided with full implementation, you **shall not** modify it.
  */
+
 int main(int argc, char *argv[]) {
     // Check parameters:
     // - source and destination are provided
