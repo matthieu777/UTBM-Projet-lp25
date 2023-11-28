@@ -4,6 +4,7 @@
 #include <time.h>
 #include <sys/types.h>
 
+
 typedef enum { FICHIER, DOSSIER } file_type_t;
 
 typedef struct _files_list_entry {
@@ -17,10 +18,17 @@ typedef struct _files_list_entry {
   struct _files_list_entry *prev;
 } files_list_entry_t;
 
+
+
+
+
 typedef struct {
   struct _files_list_entry *head;
   struct _files_list_entry *tail;
 } files_list_t;
+
+
+
 
 void clear_files_list(files_list_t *list);
 files_list_entry_t *add_file_entry(files_list_t *list, char *file_path);
