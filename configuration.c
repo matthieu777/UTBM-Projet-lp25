@@ -18,6 +18,7 @@ void display_help(char *my_name) {
     printf("         \t-h display help (this text)\n");
     printf("         \t--date_size_only disables MD5 calculation for files\n");
     printf("         \t--no-parallel disables parallel computing (cancels values of option -n)\n");
+     printf("        \t--dry-run pour exécution de test (juste lister les opérations à faire, ne pas faire les copies réellement)\n"); //ajout de dry run ici
 }
 
 
@@ -79,14 +80,25 @@ int set_configuration(configuration_t *the_config, int argc, char *argv[]) {
                 return -1;
             case '?':
                 display_help(argv[0]);
-                return -1; // toute les autres donné sont pas ok 
+                return -1;                  // toute les autres donné sont pas ok 
                 break;
             default:
                 display_help(argv[0]);
                 return -1;
         }
     }
+
+    if (optind + 2 != argc) {
+        display_help(argv[0]);              //verification qu'on à une source et un destination
+        return -1;
+    }
     
+    strncpy(the_config->source, argv[optind], sizeof(the_config->source) - 1);          //copie du paramètre passer dans source (taille de -1 pour laisser une place pour \0)
+    the_config->source[sizeof(the_config->source) - 1] = '\0';                      //ajout caraqtères de fin de chaine de caractères 
+
+    strncpy(the_config->destination, argv[optind + 1], sizeof(the_config->destination) - 1);        //copie du paramètre passer dans destination
+    the_config->destination[sizeof(the_config->destination) - 1] = '\0';
+
 
     return 0;
 
