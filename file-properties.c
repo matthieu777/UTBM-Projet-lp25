@@ -1,15 +1,18 @@
-#include <file-properties.h>
+#include "file-properties.h"
+
 
 #include <sys/stat.h>
 #include <dirent.h>
-#include <openssl/evp.h>
+//#include <openssl/evp.h>
 #include <unistd.h>
 #include <assert.h>
 #include <string.h>
-#include <defines.h>
+#include "defines.h"
 #include <fcntl.h>
 #include <stdio.h>
-#include <utility.h>
+#include "utility.h"
+
+#include "configuration.h"
 
 /*!
  * @brief get_file_stats gets all of the required information for a file (inc. directories)
@@ -27,6 +30,7 @@
  * @return -1 in case of error, 0 else
  */
 int get_file_stats(files_list_entry_t *entry) {
+
 }
 
 /*!
@@ -44,6 +48,14 @@ int compute_file_md5(files_list_entry_t *entry) {
  * @return true if directory exists, false else
  */
 bool directory_exists(char *path_to_dir) {
+    DIR *dir = opendir(path_to_dir);
+
+    if (dir != NULL) {
+        closedir(dir);      //on le ferme
+        return true;        //il existe
+    } else {
+        return false;       //sinon il existe pas
+    }
 }
 
 /*!
@@ -53,4 +65,34 @@ bool directory_exists(char *path_to_dir) {
  * Hint: try to open a file in write mode in the target directory.
  */
 bool is_directory_writable(char *path_to_dir) {
+    if (access(path_to_dir, W_OK) != -1) {          //test si on a l'access à l'ecriture avec unistd
+        return true;                                
+    } else {
+        return false;
+    }
+}
+
+
+
+
+//test a supp : 
+
+
+int main() {
+
+    char chemin[] = "test";
+
+    if (directory_exists(chemin)) {
+        printf("le dossier existe\n");
+    } else {
+        printf("le dossier n'existe pas\n");
+    };
+     if (is_directory_writable(chemin)) {
+        printf("le dossier est écrivable\n");
+    } else {
+        printf("le dossier n'est pas écrivable\n");
+    };
+
+
+    return 0;
 }
