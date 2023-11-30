@@ -50,7 +50,7 @@ files_list_entry_t *add_file_entry(files_list_t *list, char *file_path) {
 
 
     if (stat(file_path, &file_stat) == -1) {    //test que stat marche bien 
-        printf("stat n'a pas marché");
+        printf("\n stat n'a pas marché pour : %s \n", file_path);
         free(new_entry);
         return NULL;
     }
@@ -83,17 +83,33 @@ files_list_entry_t *add_file_entry(files_list_t *list, char *file_path) {
     new_entry->mode = file_stat.st_mode;            //mode
     
 
-    new_entry->next = NULL;          
-    new_entry->prev = NULL;
     
 
-    
-    int result = add_entry_to_tail(list, new_entry);        // ajout du fichier dans la list
+    files_list_entry_t *current = list->head;
 
-    if (result == -1) {         //si l'ajout n'a pas marché
-        printf("erreur lors de l'ajout\n");
-        free(new_entry);
-        return NULL;
+
+    while (current != NULL && strcmp(file_path, current->path_and_name) > 0) {      //parcours la liste tant que le fichier est inferieur alphabétiquement 
+        current = current->next;
+    }
+
+
+
+    if (current != NULL) {                          //insertion dans la liste
+        new_entry->next = current;
+        new_entry->prev = current->prev;
+        if (current->prev != NULL) {
+            current->prev->next = new_entry;
+        } else {
+            list->head = new_entry;
+        }
+        current->prev = new_entry;
+    } else {                                                                    
+        int result = add_entry_to_tail(list, new_entry);        // ajout en fin de liste
+        if (result == -1) {
+            printf("erreur dans l'ajout");
+            free(new_entry);
+            return NULL;
+        }
     }
 
     return new_entry;
@@ -191,20 +207,29 @@ int main() {
     list.tail = NULL;
 
     // add fichier
-    char test[] = "test.txt";
-    char test2[] = "test2.txt";
+    char test[] = "test";
+    char test1[] = "test/atest.txt";
+    char test2[] = "test/test.txt";
+    char test3[] = "test/test2";
+    char test4[] = "test/test2/btest3";
     files_list_entry_t *file1 = add_file_entry(&list,test);
-    files_list_entry_t *file2 = add_file_entry(&list,test2);
+    files_list_entry_t *file2 = add_file_entry(&list,test1);
+    files_list_entry_t *file3 = add_file_entry(&list,test2);
+    files_list_entry_t *file4 = add_file_entry(&list,test3);
+    files_list_entry_t *file5 = add_file_entry(&list,test4);
     
 
     // affichage 
-    printf("Liste après l'ajout de fichiers :\n");
+    printf("\n \nListe :\n");
     display_files_list(&list);
+
+
     // affichage des propriété
-    printf("path_and_name: %s\n", file1->path_and_name);
-    printf("mtime: %ld seconds, %ld nanoseconds\n", file1->mtime.tv_sec, file1->mtime.tv_nsec);
-    printf("size: %lu bytes\n", file1->size);
-    switch (file1->entry_type) {
+    files_list_entry_t *fichier = file2;
+    printf("\n \n \npath_and_name: %s\n", fichier->path_and_name);
+    printf("mtime: %ld seconds, %ld nanoseconds\n", fichier->mtime.tv_sec, fichier->mtime.tv_nsec);
+    printf("size: %lu octes\n", fichier->size);
+    switch (fichier->entry_type) {
         case FICHIER:
             printf("type : Fichier\n");
         break;
@@ -212,7 +237,7 @@ int main() {
             printf("type : Dossier\n");
         break;
         }
-    printf("mode: %o\n", file1->mode);
+    printf("mode: %o\n", fichier->mode);
 
 
     return 0;

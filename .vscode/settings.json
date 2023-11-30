@@ -1,6 +1,23 @@
 {
     "files.associations": {
         "string.h": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "types.h": "c",
+        "cmath": "c",
+        "compare": "c",
+        "concepts": "c",
+        "cstdarg": "c",
+        "cstdio": "c",
+        "cstdlib": "c",
+        "type_traits": "c",
+        "fstream": "c",
+        "iostream": "c",
+        "istream": "c",
+        "limits": "c",
+        "new": "c",
+        "ostream": "c",
+        "*.tcc": "c",
+        "cstdint": "c",
+        "random": "c"
     }
 }
