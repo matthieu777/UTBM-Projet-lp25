@@ -117,6 +117,7 @@ files_list_entry_t *add_file_entry(files_list_t *list, char *file_path) {
 
 }
 
+
 /*!
  * @brief add_entry_to_tail adds an entry directly to the tail of the list
  * It supposes that the entries are provided already ordered, e.g. when a lister process sends its list's
@@ -155,6 +156,14 @@ int add_entry_to_tail(files_list_t *list, files_list_entry_t *entry) {
  *  @return a pointer to the element found, NULL if none were found.
  */
 files_list_entry_t *find_entry_by_name(files_list_t *list, char *file_path, size_t start_of_src, size_t start_of_dest) {
+    files_list_entry_t* cursor = list->head;
+    while (cursor != NULL) {
+        if (strcmp(cursor->path_and_name + start_of_src, file_path + start_of_dest) == 0) {
+            return cursor;
+        }
+        cursor = cursor->next;
+    }
+    return NULL;
 }
 
 /*!
