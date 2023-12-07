@@ -7,6 +7,14 @@
 #include <sys/stat.h>
 #include <time.h>
 
+
+/*
+//pour le test de md5 (a supp) : 
+#include <openssl/evp.h>
+int compute_file_md5(files_list_entry_t *entry);
+*/
+
+
 /*!
  * @brief clear_files_list clears a files list
  * @param list is a pointer to the list to be cleared
@@ -31,14 +39,8 @@ void clear_files_list(files_list_t *list) {
  */
 files_list_entry_t *add_file_entry(files_list_t *list, char *file_path) {
 
-    /*
-    
-    MANQUE LE TEST SI LE FICHIER EXISTE DEJA AVEC la fonction FIND ENTRY BY NAME
-    
-    */
-    
 
-    files_list_entry_t *new_entry = (files_list_entry_t *)malloc(sizeof(files_list_entry_t)); //allocation de la memoir
+    files_list_entry_t *new_entry = (files_list_entry_t *)malloc(sizeof(files_list_entry_t)); //allocation de la memoire
 
     if (!new_entry) {               //si out of memory
         printf("out of memory\n");
@@ -46,43 +48,8 @@ files_list_entry_t *add_file_entry(files_list_t *list, char *file_path) {
     }
 
     
-    struct stat file_stat;                      //utilisation de stat pour recuperer les "poperties du fichier"
 
-
-    if (stat(file_path, &file_stat) == -1) {    //test que stat marche bien 
-        printf("\n stat n'a pas marché pour : %s \n", file_path);
-        free(new_entry);
-        return NULL;
-    }
-
-    
     strcpy(new_entry->path_and_name, file_path);            //recuperation path and name
-    
-    new_entry->mtime = file_stat.st_mtim;           // mtime
-
-    new_entry->size = file_stat.st_size;            //size
-
-
-    /*
-    
-    MANQUE LE MD5
-    
-    */
-
-
-
-    if (S_ISREG(file_stat.st_mode)) {                   //type 
-        new_entry->entry_type = FICHIER;
-    } else if (S_ISDIR(file_stat.st_mode)) {
-        new_entry->entry_type = DOSSIER;
-    } else {
-        printf("erreur pas fichier et pas dossier");
-    }
-
-
-    new_entry->mode = file_stat.st_mode;            //mode
-    
-
     
 
     files_list_entry_t *current = list->head;
@@ -156,14 +123,20 @@ int add_entry_to_tail(files_list_t *list, files_list_entry_t *entry) {
  *  @return a pointer to the element found, NULL if none were found.
  */
 files_list_entry_t *find_entry_by_name(files_list_t *list, char *file_path, size_t start_of_src, size_t start_of_dest) {
-    files_list_entry_t* cursor = list->head;
-    while (cursor != NULL) {
-        if (strcmp(cursor->path_and_name + start_of_src, file_path + start_of_dest) == 0) {
-            return cursor;
-        }
-        cursor = cursor->next;
+
+    if (list == NULL || file_path == NULL) {            //test si la liste est vide
+        return NULL;
     }
-    return NULL;
+
+
+    files_list_entry_t* current = list->head;           //on se positionne sur la tete
+    while (current != NULL) {                           //parcours de la liste 
+        if (strcmp(current->path_and_name + start_of_src, file_path + start_of_dest) == 0) {  //si le noms de fichier est identique
+            return current;
+        }
+        current = current->next;                    //on passe au suivant
+    }
+    return NULL;                                    //sinon NULL
 }
 
 /*!
@@ -206,9 +179,12 @@ void display_files_list_reversed(files_list_t *list) {
 
 
 
-// a sup juste pour test : 
+// a sup juste pour test :
 
 
+
+// test de la liste : 
+ /*
 int main() {
     //creer list vide :  
     files_list_t list;
@@ -232,22 +208,151 @@ int main() {
     printf("\n \nListe :\n");
     display_files_list(&list);
 
+    
+    return 0;
+}
+*/
 
-    // affichage des propriété
-    files_list_entry_t *fichier = file2;
-    printf("\n \n \npath_and_name: %s\n", fichier->path_and_name);
-    printf("mtime: %ld seconds, %ld nanoseconds\n", fichier->mtime.tv_sec, fichier->mtime.tv_nsec);
-    printf("size: %lu octes\n", fichier->size);
-    switch (fichier->entry_type) {
-        case FICHIER:
-            printf("type : Fichier\n");
-        break;
-        case DOSSIER:
-            printf("type : Dossier\n");
-        break;
+
+
+//------------------------------------------------------------------------------------------------
+
+/*
+
+
+// test des propreties et md5: 
+
+int get_file_stats(files_list_entry_t *entry) {
+    
+    
+    struct stat stats;
+
+    char* path = entry->path_and_name;              //pat_and_name
+
+    if (lstat(path, &stats) == -1) {            //verification que stat marche sur le path 
+        return -1;
+    }
+
+    if (S_ISDIR(stats.st_mode)) {                   // si c'est un dossier 
+
+
+        entry->entry_type = DOSSIER;                //entry_type
+        
+        entry->mode = stats.st_mode;                //mode
+
+
+
+    } else if (S_ISREG(stats.st_mode)) {               //sinon si c'est un fichier
+
+        entry->mtime.tv_nsec = stats.st_mtime;              //m_time en nano 
+
+        entry->size = stats.st_size;                    //size
+
+        if (compute_file_md5(entry) == -1) {
+            return -1;
         }
-    printf("mode: %o\n", fichier->mode);
 
+        entry->entry_type = FICHIER;                   //entry_type
+
+        entry->mode = stats.st_mode;                //mode
+
+    } else {                                        //sinon probleme
+        return -1;
+    }
+
+    return 0;
+    
+    
+}
+
+
+
+int compute_file_md5(files_list_entry_t *entry) {
+    
+    if (entry->entry_type != FICHIER || !entry) {          //si ce n'est pas un fichier ou la liste est
+        return -1;
+    }
+
+    FILE *file = fopen(entry->path_and_name, "rb"); // ouverture du fichier
+    if (!file) {        //si l'ouverture n'a pas marché
+        return -1;
+    }
+
+    EVP_MD_CTX *mdctx = EVP_MD_CTX_new();   //creer le contexte
+    const EVP_MD *md = EVP_md5();           // utilisation de l'algorithme MD5 de evp.h
+
+    if ((!mdctx || !md)||(1 != EVP_DigestInit_ex(mdctx, md, NULL))) {       //vérifie que la creation du contexte et l'initialisation de l'algo
+        EVP_MD_CTX_free(mdctx);             //on libere la memoire
+        fclose(file);                       //on ferme le fichier
+        return -1;
+    }
+
+    unsigned char buffer[1024];             //pour lire le fichier 
+    size_t bytes;
+    while ((bytes = fread(buffer, 1, sizeof(buffer), file)) != 0) {         //lis le fichier par morceaux
+        if (1 != EVP_DigestUpdate(mdctx, buffer, bytes)) {      //met à jour le contexte avec les donné lues
+            EVP_MD_CTX_free(mdctx);                     //on libere la memoire
+            fclose(file);                   //on ferme le fichier
+            return -1;
+        }
+    }
+
+    unsigned int md_len;                //pour stocker la longeur de la somme md5
+    if (1 != EVP_DigestFinal_ex(mdctx, entry->md5sum, &md_len)) {           //calcul du md5 et stockage
+        EVP_MD_CTX_free(mdctx);             //on libere la memoire
+        fclose(file);               //on ferme le fichier
+        return -1;
+    }
+
+    EVP_MD_CTX_free(mdctx);         //on libere la memoire
+    fclose(file);               //on ferme le fichier
+
+    return 0;
+
+}
+
+// test d'ajout de donner : 
+int main() {
+    
+    files_list_t list;          //creer list
+    list.head = NULL;
+    list.tail = NULL;
+
+    
+    char test_file[] = "test/test.txt";                 //ajt de fichier
+    files_list_entry_t *file_entry = add_file_entry(&list, test_file);
+
+    // affichage avant d'ajt les donner 
+    printf("avant:\n");
+    printf("path_and_name: %s\n", file_entry->path_and_name);
+    printf("mtime: %ld nanoseconds\n", file_entry->mtime.tv_nsec);
+    printf("size: %lu octets\n", file_entry->size);
+    printf("mode: %o\n", file_entry->mode);
+    printf("entry_type: %s\n", (file_entry->entry_type == FICHIER) ? "FICHIER" : "DOSSIER");
+
+    
+    get_file_stats(file_entry);     // ajt des donné
+
+    //affichage apres l'ajt
+    printf("\n apres:\n");
+    printf("path_and_name: %s\n", file_entry->path_and_name);
+    printf("mtime: %ld nanoseconds\n", file_entry->mtime.tv_nsec);
+    printf("size: %lu octets\n", file_entry->size);
+    printf("mode: %o\n", file_entry->mode);
+    printf("entry_type: %s\n", (file_entry->entry_type == FICHIER) ? "FICHIER" : "DOSSIER");
+
+     if (file_entry->entry_type == FICHIER) {
+        printf("MD5 sum: ");
+        for (int i = 0; i < 16; ++i) {
+            printf("%02x", file_entry->md5sum[i]);
+        }
+        printf("\n");
+    }
+
+    clear_files_list(&list);
 
     return 0;
 }
+
+
+*/

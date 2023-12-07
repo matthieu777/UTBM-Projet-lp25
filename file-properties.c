@@ -1,6 +1,5 @@
 #include "file-properties.h"
 
-
 #include <sys/stat.h>
 #include <dirent.h>
 #include <openssl/evp.h>
@@ -13,6 +12,10 @@
 #include "utility.h"
 
 #include "configuration.h"
+
+
+
+
 
 /*!
  * @brief get_file_stats gets all of the required information for a file (inc. directories)
@@ -30,81 +33,102 @@
  * @return -1 in case of error, 0 else
  */
 int get_file_stats(files_list_entry_t *entry) {
-    struct stat sb;
-    char path = entry->path_and_name;
-    if (lstat(path, &sb) == -1) {
+    
+    
+    struct stat stats;
+
+    char* path = entry->path_and_name;              //pat_and_name
+
+    if (lstat(path, &stats) == -1) {            //veerification que stat marche sur le path 
         return -1;
     }
 
-    entry->mtime.tv_nsec = sb.st_mtime;
-    entry->size = sb.st_size;
-    entry->mode = sb.st_mode;
+    if (S_ISDIR(stats.st_mode)) {                   // si c'est un dossier 
 
-    if (S_ISDIR(sb.st_mode)) {
-        entry->entry_type = DOSSIER;
-    } else if (S_ISREG(sb.st_mode)) {
-        entry->entry_type = FICHIER;
+
+        entry->entry_type = DOSSIER;                //entry_type
+        
+        entry->mode = stats.st_mode;                //mode
+
+
+
+    } else if (S_ISREG(stats.st_mode)) {               //sinon si c'est un fichier
+
+        entry->mtime.tv_nsec = stats.st_mtime;              //m_time en nano 
+
+        entry->size = stats.st_size;                    //size
 
         if (compute_file_md5(entry) == -1) {
             return -1;
         }
-    } else {
+
+        entry->entry_type = FICHIER;                   //entry_type
+
+        entry->mode = stats.st_mode;                //mode
+
+    } else {                                        //sinon probleme
         return -1;
     }
 
     return 0;
+    
+    
 }
+
+
 
 /*!
  * @brief compute_file_md5 computes a file's MD5 sum
  * @param the pointer to the files list entry
  * @return -1 in case of error, 0 else
  * Use libcrypto functions from openssl/evp.h
- */
+*/
 int compute_file_md5(files_list_entry_t *entry) {
-
-    //Ouvre et vérifie si le fichier à été correctement ouvert.
-    FILE *file = fopen(entry->path_and_name, "rb");
-    if (!file) {
-        perror("Impossible d'ouvrir le fichier");
+    
+    if (entry->entry_type != FICHIER || !entry) {          //si ce n'est pas un fichier ou la liste est
         return -1;
     }
 
-    EVP_MD_CTX *mdctx = EVP_MD_CTX_new();
-    const EVP_MD *md = EVP_md5(); // Algorithme MD5 de evp.h
-
-    //Vérifie si les deux lignes du dessus ont réussi.
-    if ((!mdctx || !md)||(1 != EVP_DigestInit_ex(mdctx, md, NULL))) {
-        fclose(file);
-        EVP_MD_CTX_free(mdctx);
-        perror("Erreur dans l'initialisation de la somme MD5");
+    FILE *file = fopen(entry->path_and_name, "rb"); // ouverture du fichier
+    if (!file) {        //si l'ouverture n'a pas marché
         return -1;
     }
 
-    unsigned char buffer[1024];
+    EVP_MD_CTX *mdctx = EVP_MD_CTX_new();   //creer le contexte
+    const EVP_MD *md = EVP_md5();           // utilisation de l'algorithme MD5 de evp.h
+
+    if ((!mdctx || !md)||(1 != EVP_DigestInit_ex(mdctx, md, NULL))) {       //vérifie que la creation du contexte et l'initialisation de l'algo
+        EVP_MD_CTX_free(mdctx);             //on libere la memoire
+        fclose(file);                       //on ferme le fichier
+        return -1;
+    }
+
+    unsigned char buffer[1024];             //pour lire le fichier 
     size_t bytes;
-    while ((bytes = fread(buffer, 1, sizeof(buffer), file)) != 0) {
-        if (1 != EVP_DigestUpdate(mdctx, buffer, bytes)) {
-            printf("%s\n", mdctx);
-            fclose(file);
-            EVP_MD_CTX_free(mdctx);
-            perror("Erreur dans la mise à jour de la somme MD5");
+    while ((bytes = fread(buffer, 1, sizeof(buffer), file)) != 0) {         //lis le fichier par morceaux
+        if (1 != EVP_DigestUpdate(mdctx, buffer, bytes)) {      //met à jour le contexte avec les donné lues
+            EVP_MD_CTX_free(mdctx);                     //on libere la memoire
+            fclose(file);                   //on ferme le fichier
             return -1;
         }
     }
-    unsigned int md_len; 
-    if (1 != EVP_DigestFinal_ex(mdctx, entry->md5sum, &md_len)) {
-        fclose(file);
-        EVP_MD_CTX_free(mdctx);
-        perror("Erreur dans la finalisation de la somme MD5");
+
+    unsigned int md_len;                //pour stocker la longeur de la somme md5
+    if (1 != EVP_DigestFinal_ex(mdctx, entry->md5sum, &md_len)) {           //calcul du md5 et stockage
+        EVP_MD_CTX_free(mdctx);             //on libere la memoire
+        fclose(file);               //on ferme le fichier
         return -1;
     }
 
-    EVP_MD_CTX_free(mdctx);
-    fclose(file);
+    EVP_MD_CTX_free(mdctx);         //on libere la memoire
+    fclose(file);               //on ferme le fichier
 
     return 0;
+
+    // (compilation avec gcc -o file-properties file-properties.c -lssl -lcrypto)
 }
+
+ 
 
 /*!
  * @brief directory_exists tests the existence of a directory
@@ -127,31 +151,30 @@ bool directory_exists(char *path_to_dir) {
  * @param path_to_dir the path to the directory to test
  * @return true if dir is writable, false else
  * Hint: try to open a file in write mode in the target directory.
- */
+*/
 bool is_directory_writable(char *path_to_dir) {
-    char test_file[PATH_SIZE];
-    if (concat_path(test_file, path_to_dir, "testfile.tmp") == NULL) {
-        return false;
-    }
-
-    FILE *file = fopen(test_file, "w");
-    if (file != NULL) {
-        fclose(file);
-        remove(test_file);
-        return true;
+    if (access(path_to_dir, W_OK) != -1) {          //test si on a l'access à l'ecriture avec unistd
+        return true;                                
     } else {
         return false;
     }    
 }
+
+ 
+
+
 
 
 
 
 //test a supp : 
 
+
 /*
 int main() {
 
+
+//test de la fonction is 3 et 4 :        
     char chemin[] = "test";
 
     if (directory_exists(chemin)) {
@@ -166,5 +189,7 @@ int main() {
     };
 
 
+
     return 0;
-}*/
+}
+*/

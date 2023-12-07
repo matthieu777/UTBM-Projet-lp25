@@ -1,10 +1,10 @@
-#include <sync.h>
+#include "sync.h"
 #include <dirent.h>
 #include <string.h>
-#include <processes.h>
-#include <utility.h>
-#include <messages.h>
-#include <file-properties.h>
+#include "processes.h"
+#include "utility.h"
+#include "messages.h"
+#include "file-properties.h"
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/sendfile.h>
@@ -76,6 +76,11 @@ void make_list(files_list_t *list, char *target) {
  * @return a pointer to a dir, NULL if it cannot be opened
  */
 DIR *open_dir(char *path) {
+    DIR *dir = opendir(path);                   //ouveture du dir 
+    if (dir == NULL) {                      //si l'ouverture n'a pas marché
+        return NULL;
+    }
+    return dir;                       
 }
 
 /*!
@@ -85,4 +90,24 @@ DIR *open_dir(char *path) {
  * Relevant entries are all regular files and dir, except . and ..
  */
 struct dirent *get_next_entry(DIR *dir) {
+}
+
+
+
+
+
+
+//test à supp : 
+
+int main() {
+    char path[] = "test/test2";
+    DIR *directory = open_dir(path);
+
+    if (directory != NULL) {
+        printf("ouverture à marché\n");
+    } else {
+        printf("ouverture à echoué\n");
+    }
+
+    return 0;
 }
