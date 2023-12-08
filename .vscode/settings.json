@@ -18,6 +18,7 @@
         "ostream": "c",
         "*.tcc": "c",
         "cstdint": "c",
-        "random": "c"
+        "random": "c",
+        "evp.h": "c"
     }
 }

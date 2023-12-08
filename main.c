@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <assert.h>
-#include <sync.h>
-#include <configuration.h>
-#include <file-properties.h>
-#include <processes.h>
+#include "sync.h"
+#include "configuration.h"
+#include "file-properties.h"
+#include "processes.h"
 #include <unistd.h>
 
 /*!
@@ -48,4 +48,7 @@ int main(int argc, char *argv[]) {
     clean_processes(&my_config, &processes_context);
 
     return 0;
+    
 }
+
+

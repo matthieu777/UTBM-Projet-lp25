@@ -5,6 +5,7 @@
 #include <sys/types.h>
 
 
+
 typedef enum { FICHIER, DOSSIER } file_type_t;
 
 typedef struct _files_list_entry {
