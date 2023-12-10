@@ -115,7 +115,7 @@ int set_configuration(configuration_t *the_config, int argc, char *argv[]) {
 
 
 
-
+/*
 
 // A supp en-dessous c'est juste pour test: 
 
@@ -145,3 +145,6 @@ int main(int argc, char *argv[]){
     return 0;
     
 }
+
+
+*/

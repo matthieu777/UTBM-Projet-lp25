@@ -40,7 +40,7 @@ char *concat_path(char *result, char *prefix, char *suffix) {
 
 
 
-
+/*
 // test a sup : 
 
 
@@ -61,3 +61,5 @@ int main() {
 
     return 0;
 }
+
+*/

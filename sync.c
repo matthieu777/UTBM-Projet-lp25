@@ -360,7 +360,6 @@ int compute_file_md5(files_list_entry_t *entry) {
 
 
 
-
 int main() {
 
 
@@ -480,8 +479,6 @@ int main() {
 
     return 0;
 */
-
-
 
 
 
