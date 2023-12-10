@@ -205,50 +205,67 @@ void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t
 }
 
 
-/*!
- * @brief make_list lists files in a location (it recurses in directories)
- * It doesn't get files properties, only a list of paths
- * This function is used by make_files_list and make_files_list_parallel
- * @param list is a pointer to the list that will be built
- * @param target is the target dir whose content must be listed
- */
 void make_list(files_list_t *list, char *target) {
-    DIR *dir = open_dir(target);            //ouvre le repertoire donné 
+    // Ouvrir le répertoire spécifié
+    DIR *dir = open_dir(target);
 
-    if (dir == NULL) {          //si on ne parveient pas a ouvir le repertoir
-        printf("erreur");  
+    // Vérifier si l'ouverture du répertoire a échoué
+    if (dir == NULL) {
+        printf("erreur");
+        return;
     }
 
-    struct dirent *entry;           //
-    while ((entry = get_next_entry(dir)) != NULL) { //boucle tant que qu'il y'a des fichier dans le repertoire
-        
-        char full_path[PATH_SIZE];      //tableau pour stocker le chemin complet
-        concat_path(full_path, target, entry->d_name);  //assemble le chemin target avec l'entry actuelle 
+    struct dirent *entry;
 
+    // Parcourir les entrées du répertoire
+    while ((entry = get_next_entry(dir)) != NULL) {
+        char full_path[PATH_SIZE];
 
-        if (directory_exists(full_path)) {      //si c'est un repertoire on recuse dedans pour traiter sont contenu
-            make_list(list, full_path);
-        } else {
-            files_list_entry_t *new_entry = (files_list_entry_t *)malloc(sizeof(files_list_entry_t));       //aloue de la memoire dans la list chainer 
-            if (new_entry != NULL) {                                                                        //si l'allocution a marché
-                snprintf(new_entry->path_and_name, sizeof(new_entry->path_and_name), "%s", full_path);          //copie de full_path dans path_and name 
-                
-                new_entry->next = NULL;                             //initialise next à NULL
-                new_entry->prev = list->tail;                       //initialise prev au pointeur de la queue de la list
+        // Construire le chemin complet de l'entrée (fichier ou dossier)
+        concat_path(full_path, target, entry->d_name);
 
-                
-                if (list->tail != NULL) {               //si la liste n'est pas vide 
-                    list->tail->next = new_entry;          //queue de du dernier element de la liste pointe vers le nouveau noeud 
-                } else {                                //si elle est vide 
-                    list->head = new_entry;             //la tete de la liste pointe sur le nouvelle elem
+        // Si l'entrée est un dossier
+        if (directory_exists(full_path)) {
+            // Créer un nouvel élément pour représenter ce dossier dans la liste
+            files_list_entry_t *new_entry = (files_list_entry_t *)malloc(sizeof(files_list_entry_t));
+            if (new_entry != NULL) {
+                // Assigner le chemin et le nom de l'entrée au nouvel élément de liste
+                snprintf(new_entry->path_and_name, sizeof(new_entry->path_and_name), "%s", full_path);
+                new_entry->next = NULL;
+                new_entry->prev = list->tail;
+
+                // Ajouter l'élément à la liste et appeler récursivement make_list pour explorer le dossier
+                if (list->tail != NULL) {
+                    list->tail->next = new_entry;
+                } else {
+                    list->head = new_entry;
                 }
-                list->tail = new_entry;                 //le pointeur de la queue de la liste pointe sur le nouvelle elem 
+                list->tail = new_entry;
+                make_list(list, full_path);
+            }
+        } else { // Si l'entrée est un fichier
+            // Créer un nouvel élément pour représenter ce fichier dans la liste
+            files_list_entry_t *new_entry = (files_list_entry_t *)malloc(sizeof(files_list_entry_t));
+            if (new_entry != NULL) {
+                // Assigner le chemin et le nom de l'entrée au nouvel élément de liste
+                snprintf(new_entry->path_and_name, sizeof(new_entry->path_and_name), "%s", full_path);
+                new_entry->next = NULL;
+                new_entry->prev = list->tail;
+
+                // Ajouter l'élément à la liste
+                if (list->tail != NULL) {
+                    list->tail->next = new_entry;
+                } else {
+                    list->head = new_entry;
+                }
+                list->tail = new_entry;
             }
         }
     }
-    closedir(dir);          //fermeture du repertoire
-}
 
+    // Fermer le répertoire
+    closedir(dir);
+}
 
 
 
