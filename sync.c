@@ -35,9 +35,57 @@
  * @param the_config is a pointer to the configuration
  * @param p_context is a pointer to the processes context
  */
-void synchronize(configuration_t *the_config, process_context_t *p_context) {
-  
 
+// Cette fonction synchronise les fichiers entre une source et une destination.
+void synchronize(configuration_t *the_config, process_context_t *p_context) {
+    // Initialisation des listes de fichiers source et destination
+    files_list_t src_list;
+    src_list.head = src_list.tail = NULL;
+
+    files_list_t dest_list;
+    dest_list.head = dest_list.tail = NULL;
+
+    // Construire les listes de fichiers source et destination
+    make_files_list(&src_list, the_config->source);
+    make_files_list(&dest_list, the_config->destination);
+
+    // Comparaison et synchronisation des fichiers
+    files_list_entry_t *src_entry = src_list.head;
+
+    while (src_entry != NULL) {
+        // Recherche de l'entrée correspondante dans la liste de destination
+        files_list_entry_t *dest_entry = dest_list.head;
+        while (dest_entry != NULL && strcmp(dest_entry->path_and_name, src_entry->path_and_name) != 0) {
+            dest_entry = dest_entry->next;
+        }
+
+        // Copier le fichier source s'il n'existe pas dans la destination
+        if (dest_entry == NULL) {
+            copy_entry_to_destination(src_entry, the_config);
+        } else {
+            // Vérifier les différences et mettre à jour si nécessaire
+            if (mismatch(src_entry, dest_entry, the_config->uses_md5)) {
+                copy_entry_to_destination(src_entry, the_config);
+            }
+        }
+
+        src_entry = src_entry->next;
+    }
+
+    // Nettoyage - Libérer la mémoire utilisée pour les listes de fichiers
+    files_list_entry_t *src_temp = src_list.head;
+    while (src_temp != NULL) {
+        files_list_entry_t *next = src_temp->next;
+        free(src_temp);
+        src_temp = next;
+    }
+
+    files_list_entry_t *dest_temp = dest_list.head;
+    while (dest_temp != NULL) {
+        files_list_entry_t *next = dest_temp->next;
+        free(dest_temp);
+        dest_temp = next;
+    }
 }
 
 /*!
@@ -109,9 +157,51 @@ void make_files_lists_parallel(files_list_t *src_list, files_list_t *dst_list, c
  * Use sendfile to copy the file, mkdir to create the directory
  */
 void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t *the_config) {
-    
+    // Création du chemin de destination en utilisant le répertoire source et destination
+    char destination_path[PATH_SIZE];
+    strncpy(destination_path, source_entry->path_and_name, sizeof(destination_path));
+    strncpy(destination_path, the_config->destination, strlen(the_config->destination));
+    strncpy(destination_path + strlen(the_config->destination), source_entry->path_and_name + strlen(the_config->source), sizeof(destination_path) - strlen(the_config->destination));
 
-    
+    // Vérification s'il s'agit d'un dossier, création dans la destination si nécessaire
+    if (source_entry->entry_type == DOSSIER) {
+        if (mkdir(destination_path, source_entry->mode) == -1 && errno != EEXIST) {
+            printf("Erreur lors de la création du répertoire");
+            return;
+        }
+    } else { // Si c'est un fichier
+        // Ouverture du fichier source en lecture
+        int source_fd = open(source_entry->path_and_name, O_RDONLY);
+        if (source_fd == -1) {
+            printf("Erreur lors de l'ouverture du fichier source");
+            return;
+        }
+
+        // Ouverture ou création du fichier destination en écriture
+        int destination_fd = open(destination_path, O_WRONLY | O_CREAT | O_TRUNC, source_entry->mode);
+        if (destination_fd == -1) {
+            printf("Erreur lors de l'ouverture du fichier destination");
+            close(source_fd);
+            return;
+        }
+
+        // Copie du contenu du fichier source vers le fichier destination
+        off_t offset = 0;
+        ssize_t bytes_copied = sendfile(destination_fd, source_fd, &offset, source_entry->size);
+        if (bytes_copied == -1) {
+            printf("Erreur lors de la copie du fichier");
+        }
+
+        // Fermeture des descripteurs de fichiers
+        close(source_fd);
+        close(destination_fd);
+
+        // Définition du temps de modification du fichier destination pour correspondre à celui du fichier source
+        struct utimbuf times;
+        times.actime = source_entry->mtime.tv_sec;
+        times.modtime = source_entry->mtime.tv_sec;
+        utime(destination_path, &times);
+    }
 }
 
 
