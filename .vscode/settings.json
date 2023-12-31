@@ -21,6 +21,7 @@
         "random": "c",
         "evp.h": "c",
         "unistd.h": "c",
-        "file-properties.h": "c"
+        "file-properties.h": "c",
+        "messages.h": "c"
     }
 }

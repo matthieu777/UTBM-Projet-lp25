@@ -1,6 +1,8 @@
-#include <messages.h>
+#include "messages.h"
 #include <sys/msg.h>
 #include <string.h>
+
+#include <stdio.h>
 
 // Functions in this file are required for inter processes communication
 
@@ -14,6 +16,20 @@
  * Used by the specialized functions send_analyze*
  */
 int send_file_entry(int msg_queue, int recipient, files_list_entry_t *file_entry, int cmd_code) {
+    any_message_t msg; //utilisation du type defini 
+    
+    msg.list_entry.reply_to = msg_queue;
+    msg.list_entry.mtype = recipient;
+    msg.list_entry.payload = *file_entry;
+    msg.list_entry.op_code = cmd_code;
+    
+
+    int result = msgsnd(msg_queue, &msg, sizeof(any_message_t) - sizeof(long), 0); //envoie du message
+     if (result == -1) {
+        printf("erreur\n");
+    }
+
+    return result; 
 }
 
 /*!
@@ -24,7 +40,24 @@ int send_file_entry(int msg_queue, int recipient, files_list_entry_t *file_entry
  * @return the result of msgsnd
  */
 int send_analyze_dir_command(int msg_queue, int recipient, char *target_dir) {
+
+    any_message_t msg;
+    msg.analyze_dir_command.mtype = recipient;   
+    msg.analyze_dir_command.op_code = COMMAND_CODE_ANALYZE_DIR;
+    
+
+    strncpy(msg.analyze_dir_command.target, target_dir, PATH_SIZE - 1);
+    msg.analyze_dir_command.target[PATH_SIZE - 1] = '\0'; 
+   
+    int result = msgsnd(msg_queue, &msg, sizeof(analyze_dir_command_t) - sizeof(long), 0); // envoie du message
+
+    if (result == -1) {
+        printf("erreur\n");
+    }
+
+    return result;
 }
+
 
 // The 3 following functions are one-liners
 
@@ -37,6 +70,7 @@ int send_analyze_dir_command(int msg_queue, int recipient, char *target_dir) {
  * Calls send_file_entry function
  */
 int send_analyze_file_command(int msg_queue, int recipient, files_list_entry_t *file_entry) {
+    return send_file_entry(msg_queue, recipient, file_entry, COMMAND_CODE_ANALYZE_FILE);
 }
 
 /*!
@@ -48,6 +82,7 @@ int send_analyze_file_command(int msg_queue, int recipient, files_list_entry_t *
  * Calls send_file_entry function
  */
 int send_analyze_file_response(int msg_queue, int recipient, files_list_entry_t *file_entry) {
+    return send_file_entry(msg_queue, recipient, file_entry, COMMAND_CODE_FILE_ANALYZED);
 }
 
 /*!
@@ -59,6 +94,7 @@ int send_analyze_file_response(int msg_queue, int recipient, files_list_entry_t 
  * Calls send_file_entry function
  */
 int send_files_list_element(int msg_queue, int recipient, files_list_entry_t *file_entry) {
+    return send_file_entry(msg_queue, recipient, file_entry, COMMAND_CODE_LIST_COMPLETE);
 }
 
 /*!
@@ -68,6 +104,18 @@ int send_files_list_element(int msg_queue, int recipient, files_list_entry_t *fi
  * @return the result of msgsnd
  */
 int send_list_end(int msg_queue, int recipient) {
+    any_message_t msg;
+    msg.simple_command.mtype = recipient;
+    msg.simple_command.message = COMMAND_CODE_LIST_COMPLETE;
+
+    int result = msgsnd(msg_queue, &msg, sizeof(simple_command_t) - sizeof(long), 0);
+    
+    if (result == -1) {
+        printf("erreur");
+    }
+
+    return result;
+    
 }
 
 /*!
@@ -77,6 +125,17 @@ int send_list_end(int msg_queue, int recipient) {
  * @return the result of msgsnd
  */
 int send_terminate_command(int msg_queue, int recipient) {
+    any_message_t msg;
+    msg.simple_command.mtype = recipient;
+    msg.simple_command.message = COMMAND_CODE_TERMINATE;
+
+    int result = msgsnd(msg_queue, &msg, sizeof(simple_command_t) - sizeof(long), 0);
+
+    if (result == -1) {
+        printf("erreur \n");
+    }
+
+    return result;
 }
 
 /*!
@@ -86,4 +145,18 @@ int send_terminate_command(int msg_queue, int recipient) {
  * @return the result of msgsnd
  */
 int send_terminate_confirm(int msg_queue, int recipient) {
+    any_message_t msg;
+    msg.simple_command.mtype = recipient;
+    msg.simple_command.message = COMMAND_CODE_TERMINATE_OK;
+
+    int result = msgsnd(msg_queue, &msg, sizeof(simple_command_t) - sizeof(long), 0);
+
+    if (result == -1) {
+        printf("erreur");
+    }
+
+    return result;
 }
+
+
+
