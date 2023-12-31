@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <assert.h>
+#include <sys/stat.h>
 #include "sync.h"
 #include "configuration.h"
 #include "file-properties.h"
@@ -28,7 +29,7 @@ int main(int argc, char *argv[]) {
 
     // Check directories
     if (!directory_exists(my_config.source) || !directory_exists(my_config.destination)) {
-        printf("Either source or destination directory do not exist\nAborting\n");
+        printf("Either source or  destination directory do not exist\nAborting\n");
         return -1;
     }
     // Is destination writable?

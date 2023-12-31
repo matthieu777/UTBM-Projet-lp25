@@ -1,6 +1,5 @@
-#include "file-properties.h"
-
 #include <sys/stat.h>
+#include "file-properties.h"
 #include <dirent.h>
 #include <openssl/evp.h>
 #include <unistd.h>
@@ -37,9 +36,9 @@ int get_file_stats(files_list_entry_t *entry) {
     
     struct stat stats;
 
-    char* path = entry->path_and_name;              //pat_and_name
+    const char* path = entry->path_and_name;              //pat_and_name
 
-    if (lstat(path, &stats) == -1) {            //veerification que stat marche sur le path 
+    if (lstat(path, &stats) == -1) {            //verification que stat marche sur le path 
         return -1;
     }
 
@@ -84,6 +83,10 @@ int get_file_stats(files_list_entry_t *entry) {
  * Use libcrypto functions from openssl/evp.h
 */
 int compute_file_md5(files_list_entry_t *entry) {
+
+    if (!entry || entry->entry_type != FICHIER) { // verifie si entry est null ou si ce n'est pas un fichier
+        return -1;
+    }
     
     if (entry->entry_type != FICHIER || !entry) {          //si ce n'est pas un fichier ou la liste est
         return -1;
@@ -136,6 +139,9 @@ int compute_file_md5(files_list_entry_t *entry) {
  * @return true if directory exists, false else
  */
 bool directory_exists(char *path_to_dir) {
+    if (!path_to_dir) {
+        return false; 
+    }
     DIR *dir = opendir(path_to_dir);
 
     if (dir != NULL) {
@@ -153,6 +159,10 @@ bool directory_exists(char *path_to_dir) {
  * Hint: try to open a file in write mode in the target directory.
 */
 bool is_directory_writable(char *path_to_dir) {
+    if (!path_to_dir) {
+        return false; 
+    }
+
     if (access(path_to_dir, W_OK) != -1) {          //test si on a l'access à l'ecriture avec unistd
         return true;                                
     } else {

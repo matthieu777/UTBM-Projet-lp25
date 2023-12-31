@@ -1,10 +1,9 @@
+#include <sys/stat.h>
 #include "files-list.h"
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-
-#include <sys/stat.h>
 #include <time.h>
 
 
@@ -38,6 +37,11 @@ void clear_files_list(files_list_t *list) {
  *  @return 0 if success, -1 else (out of memory)
  */
 files_list_entry_t *add_file_entry(files_list_t *list, char *file_path) {
+
+    if (!list || !file_path) {
+        printf("Invalide parameter\n");
+        return NULL;
+    }
 
 
     files_list_entry_t *new_entry = (files_list_entry_t *)malloc(sizeof(files_list_entry_t)); //allocation de la memoire
@@ -131,7 +135,12 @@ files_list_entry_t *find_entry_by_name(files_list_t *list, char *file_path, size
 
     files_list_entry_t* current = list->head;           //on se positionne sur la tete
     while (current != NULL) {                           //parcours de la liste 
-        if (strcmp(current->path_and_name + start_of_src, file_path + start_of_dest) == 0) {  //si le noms de fichier est identique
+        size_t len_in_list = strlen(current->path_and_name + start_of_src);
+        size_t len_searched = strlen(file_path + start_of_dest);
+        if (len_in_list > len_searched) {
+            return NULL;
+        }
+        if (strcmp(current->path_and_name + start_of_src, file_path + start_of_dest) == 0) {
             return current;
         }
         current = current->next;                    //on passe au suivant

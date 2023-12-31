@@ -28,6 +28,8 @@ void display_help(char *my_name) {
  * @param the_config is a pointer to the configuration to be initialized
  */
 void init_configuration(configuration_t *the_config) {
+
+
     the_config->source[0] = '\0';
     the_config->destination[0] = '\0';  //on initialiser la source et la destination a une chaine vide de base
 

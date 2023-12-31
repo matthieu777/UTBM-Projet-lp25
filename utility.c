@@ -21,7 +21,7 @@ char *concat_path(char *result, char *prefix, char *suffix) {
     int suffix_len = strlen(suffix);
 
     
-    if (prefix_len + suffix_len + 1 > PATH_SIZE) {          //verification que la taille ne depasse pas Path_size
+    if (prefix_len + suffix_len + 2 > PATH_SIZE) {          //verification que la taille ne depasse pas Path_size
         return NULL;                                        // sinon echec
     }
 
@@ -29,11 +29,11 @@ char *concat_path(char *result, char *prefix, char *suffix) {
 
 
     if (result[prefix_len - 1] != '/') {        //ajout de '/' si pas deja present
-        strcat(result, "/");
+        strncat(result, "/", PATH_SIZE - strlen(result) - 1);
     }
 
     
-    strcat(result, suffix);         //ajout du suffix
+     strncat(result, suffix, PATH_SIZE - strlen(result) - 1);        //ajout du suffix
 
     return result;
 }

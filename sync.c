@@ -1,3 +1,4 @@
+#include <sys/stat.h>
 #include "sync.h"
 #include <dirent.h>
 #include <string.h>
@@ -5,11 +6,11 @@
 #include "utility.h"
 #include "messages.h"
 #include "file-properties.h"
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/sendfile.h>
 #include <unistd.h>
 #include <sys/msg.h>
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,15 +18,15 @@
 
 #include <utime.h>
 #include <errno.h>
-//a supp : 
 
+/*
+//a supp : 
 #include <openssl/evp.h>
 #include <assert.h>
 #include "defines.h"
-
 #include "configuration.h"
 //gcc -o sync sync.c -lssl -lcrypto
-
+*/
 
 
 /*!
@@ -54,10 +55,8 @@ void synchronize(configuration_t *the_config, process_context_t *p_context) {
 
     while (src_entry != NULL) {
         // Recherche de l'entrée correspondante dans la liste de destination
-        files_list_entry_t *dest_entry = dest_list.head;
-        while (dest_entry != NULL && strcmp(dest_entry->path_and_name, src_entry->path_and_name) != 0) {
-            dest_entry = dest_entry->next;
-        }
+        files_list_entry_t *dest_entry = find_entry_by_name(&dest_list, src_entry->path_and_name, /* start_of_src */ 0, /* start_of_dest */ 0);
+
 
         // Copier le fichier source s'il n'existe pas dans la destination
         if (dest_entry == NULL) {
@@ -96,6 +95,10 @@ void synchronize(configuration_t *the_config, process_context_t *p_context) {
  * @return true if both files are not equal, false else
  */
 bool mismatch(files_list_entry_t *lhd, files_list_entry_t *rhd, bool has_md5) {
+
+    if (!lhd || !rhd) {
+        return true;
+    }
     
     if (lhd->entry_type != rhd->entry_type) {           //test si de meme type
         return true;
@@ -128,6 +131,12 @@ bool mismatch(files_list_entry_t *lhd, files_list_entry_t *rhd, bool has_md5) {
  */
 void make_files_list(files_list_t *list, char *target_path) {
 
+     if (!list || !target_path) {
+        printf("Invalid parameters\n");
+        return;
+    }
+
+
     make_list(list, target_path);          //construie la liste
 
     files_list_entry_t *current = list->head;
@@ -149,7 +158,6 @@ void make_files_list(files_list_t *list, char *target_path) {
 void make_files_lists_parallel(files_list_t *src_list, files_list_t *dst_list, configuration_t *the_config, int msg_queue) {
 
 }
-
 /*!
  * @brief copy_entry_to_destination copies a file from the source to the destination
  * It keeps access modes and mtime (@see utimensat)
@@ -160,13 +168,14 @@ void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t
     // Création du chemin de destination en utilisant le répertoire source et destination
     char destination_path[PATH_SIZE];
     strncpy(destination_path, source_entry->path_and_name, sizeof(destination_path));
-    strncpy(destination_path, the_config->destination, strlen(the_config->destination));
+    strncpy(destination_path, the_config->destination, PATH_SIZE- 1);
+    destination_path[PATH_SIZE- 1] = '\0';
     strncpy(destination_path + strlen(the_config->destination), source_entry->path_and_name + strlen(the_config->source), sizeof(destination_path) - strlen(the_config->destination));
 
     // Vérification s'il s'agit d'un dossier, création dans la destination si nécessaire
     if (source_entry->entry_type == DOSSIER) {
-        if (mkdir(destination_path, source_entry->mode) == -1 && errno != EEXIST) {
-            printf("Erreur lors de la création du répertoire");
+        if (mkdir(destination_path, source_entry->mode) == -1 ) {
+            //erreur dans la copie du dossier/ou existe deja
             return;
         }
     } else { // Si c'est un fichier
@@ -196,16 +205,40 @@ void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t
         close(source_fd);
         close(destination_fd);
 
-        // Définition du temps de modification du fichier destination pour correspondre à celui du fichier source
+
+        //modification de la date de modification 
+        struct stat source_stat;
+        if (stat(source_entry->path_and_name, &source_stat) == -1) {
+            printf("Erreur lors de la récupération des informations sur le fichier source");
+            return;
+        }
+
         struct utimbuf times;
-        times.actime = source_entry->mtime.tv_sec;
-        times.modtime = source_entry->mtime.tv_sec;
-        utime(destination_path, &times);
+        times.actime = source_stat.st_atime;
+        times.modtime = source_stat.st_mtime;
+
+        if (utime(destination_path, &times) == -1) {
+            printf("Erreur lors de la modification du temps de modification du fichier destination");
+        }
     }
 }
 
 
+
+
+/*!
+ * @brief make_list lists files in a location (it recurses in directories)
+ * It doesn't get files properties, only a list of paths
+ * This function is used by make_files_list and make_files_list_parallel
+ * @param list is a pointer to the list that will be built
+ * @param target is the target dir whose content must be listed
+ */
 void make_list(files_list_t *list, char *target) {
+
+    if (!list || !target) {
+        printf("Invalid parameters\n");
+        return;
+    }
     // Ouvrir le répertoire spécifié
     DIR *dir = open_dir(target);
 
@@ -225,41 +258,13 @@ void make_list(files_list_t *list, char *target) {
         concat_path(full_path, target, entry->d_name);
 
         // Si l'entrée est un dossier
-        if (directory_exists(full_path)) {
-            // Créer un nouvel élément pour représenter ce dossier dans la liste
-            files_list_entry_t *new_entry = (files_list_entry_t *)malloc(sizeof(files_list_entry_t));
-            if (new_entry != NULL) {
-                // Assigner le chemin et le nom de l'entrée au nouvel élément de liste
-                snprintf(new_entry->path_and_name, sizeof(new_entry->path_and_name), "%s", full_path);
-                new_entry->next = NULL;
-                new_entry->prev = list->tail;
-
-                // Ajouter l'élément à la liste et appeler récursivement make_list pour explorer le dossier
-                if (list->tail != NULL) {
-                    list->tail->next = new_entry;
-                } else {
-                    list->head = new_entry;
-                }
-                list->tail = new_entry;
-                make_list(list, full_path);
-            }
+       if (directory_exists(full_path)) {
+            // Ajouter le dossier à la liste et appeler récursivement make_list pour explorer le dossier
+            add_file_entry(list, full_path);
+            make_list(list, full_path);
         } else { // Si l'entrée est un fichier
-            // Créer un nouvel élément pour représenter ce fichier dans la liste
-            files_list_entry_t *new_entry = (files_list_entry_t *)malloc(sizeof(files_list_entry_t));
-            if (new_entry != NULL) {
-                // Assigner le chemin et le nom de l'entrée au nouvel élément de liste
-                snprintf(new_entry->path_and_name, sizeof(new_entry->path_and_name), "%s", full_path);
-                new_entry->next = NULL;
-                new_entry->prev = list->tail;
-
-                // Ajouter l'élément à la liste
-                if (list->tail != NULL) {
-                    list->tail->next = new_entry;
-                } else {
-                    list->head = new_entry;
-                }
-                list->tail = new_entry;
-            }
+            // Ajouter le fichier à la liste
+            add_file_entry(list, full_path);
         }
     }
 
@@ -277,6 +282,11 @@ void make_list(files_list_t *list, char *target) {
  * @return a pointer to a dir, NULL if it cannot be opened
  */
 DIR *open_dir(char *path) {
+
+    if (!path) {
+        return NULL;
+    }
+
     DIR *dir = opendir(path);                   //ouveture du dir 
     if (dir == NULL) {                      //si l'ouverture n'a pas marché
         return NULL;
@@ -312,12 +322,8 @@ struct dirent *get_next_entry(DIR *dir) {
 
 
 
-
-
-
-
+/*
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 //test à supp : 
 
 //pour test make list: 
@@ -395,12 +401,6 @@ int get_file_stats(files_list_entry_t *entry) {
 
 
 
-
-/*!
- * @brief directory_exists tests the existence of a directory
- * @path_to_dir a string with the path to the directory
- * @return true if directory exists, false else
- */
 bool directory_exists(char *path_to_dir) {
     DIR *dir = opendir(path_to_dir);
 
@@ -459,6 +459,7 @@ int compute_file_md5(files_list_entry_t *entry) {
 }
 
 
+*/
 
 
 
@@ -466,8 +467,7 @@ int compute_file_md5(files_list_entry_t *entry) {
 
 
 
-
-int main() {
+//int main() {
 
 
      /*
@@ -587,7 +587,79 @@ int main() {
     return 0;
 */
 
+/*
+
+//test de miss match 
+
+    files_list_t source_list;
+    files_list_t dest_list;
+
+    char source[] = "test";
+    char dest[] = "testbis";
+
+
+    make_files_list(&source_list, source);
+    make_files_list(&dest_list, dest);
+
+    files_list_entry_t *source_entry = source_list.head;
+    files_list_entry_t *dest_entry = dest_list.head;
+
+
+    bool result = mismatch(source_entry, dest_entry, true);
+
+    if (result) {
+        printf("pas égaux.\n");
+    } else {
+        printf(" égaux.\n");
+    }
 
 
 
-}
+    return 0;
+*/
+/*
+
+//test de copie
+
+
+
+    // Create a sample configuration
+    configuration_t config;
+    strcpy(config.source, "test");
+    strcpy(config.destination, "testbis");
+
+
+    // Create a sample files_list_entry_t
+    files_list_entry_t source_entry;
+    strcpy(source_entry.path_and_name, "test/test.txt");
+    source_entry.mtime.tv_sec = 1638273622;  // Replace with your desired modification time
+    source_entry.size = 1024;  // Replace with your desired file size
+    source_entry.entry_type = DOSSIER;  // Replace with the appropriate file type
+    source_entry.mode = 100664;  // Replace with your desired file mode
+
+    printf("%lu \n", source_entry.size);
+    printf("Adresse mémoire de source_entry : %p\n", (void *)&source_entry);
+
+    // Call the copy_entry_to_destination function
+    copy_entry_to_destination(&source_entry, &config);
+
+*/
+
+/*
+//test de synch
+
+    // Create a configuration with default values
+    configuration_t config;
+    strcpy(config.source, "test");
+    strcpy(config.destination, "testbis");
+    config.uses_md5 = false; // Change to true if you want to use MD5 for comparison
+
+    // Call the synchronize function
+    synchronize(&config, 0);
+
+    printf("Synchronization completed successfully.\n");
+
+    return 0;
+*/
+
+//}

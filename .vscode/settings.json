@@ -19,6 +19,8 @@
         "*.tcc": "c",
         "cstdint": "c",
         "random": "c",
-        "evp.h": "c"
+        "evp.h": "c",
+        "unistd.h": "c",
+        "file-properties.h": "c"
     }
 }
