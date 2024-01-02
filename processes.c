@@ -16,22 +16,22 @@
  * @return 0 if all went good, -1 else
  */
 int prepare(configuration_t *the_config, process_context_t *p_context) {
-   /* if (the_config->is_parallel && the_config == NULL) 
-        return 0;
-    else {
+   if (the_config == NULL || !the_config->is_parallel) {
+        return 0; 
+    } else {
         pid_t pid = fork();
-        if (pid == -1) 
-            return -1
-        else if (pid == 0) {
-                //proc child
-                return 0;
-            }
-        else {
+        if (pid == -1) {
+            return -1; 
+        } else if (pid == 0) {
+            //proc enfant
+            return 0;
+        } else {
             //proc parent
             return 0;
         }
-    } */
+    }
 }
+
 
 /*!
  * @brief make_process creates a process and returns its PID to the parent
