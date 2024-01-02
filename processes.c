@@ -16,7 +16,21 @@
  * @return 0 if all went good, -1 else
  */
 int prepare(configuration_t *the_config, process_context_t *p_context) {
-    
+   /* if (the_config->is_parallel && the_config == NULL) 
+        return 0;
+    else {
+        pid_t pid = fork();
+        if (pid == -1) 
+            return -1
+        else if (pid == 0) {
+                //proc child
+                return 0;
+            }
+        else {
+            //proc parent
+            return 0;
+        }
+    } */
 }
 
 /*!
