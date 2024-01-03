@@ -23,12 +23,15 @@ int prepare(configuration_t *the_config, process_context_t *p_context) {
         if (pid == -1) {
             return -1; 
         } else if (pid == 0) {
-            //proc enfant
+            
+           
             return 0;
         } else {
-            //proc parent
-            return 0;
+            p_context->source_lister_pid = pid;
+            
         }
+
+    return 0;
     }
 }
 
