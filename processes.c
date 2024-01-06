@@ -66,6 +66,9 @@ int make_process(process_context_t *p_context, process_loop_t func, void *parame
  * @param parameters is a pointer to its parameters, to be cast to a lister_configuration_t
  */
 void lister_process_loop(void *parameters) {
+    lister_configuration_t *config = (lister_configuration_t *)parameters; //cast des paramètre vers lister_configuration_t 
+
+
 }
 
 /*!
@@ -73,6 +76,7 @@ void lister_process_loop(void *parameters) {
  * @param parameters is a pointer to its parameters, to be cast to an analyzer_configuration_t
  */
 void analyzer_process_loop(void *parameters) {
+    analyzer_configuration_t *config = (analyzer_configuration_t *)parameters; //cast des paramètre vers lister_configuration_t  analyzer_configuration_t 
 }
 
 /*!
