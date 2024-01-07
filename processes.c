@@ -17,25 +17,30 @@
  * @return 0 if all went good, -1 else
  */
 int prepare(configuration_t *the_config, process_context_t *p_context) {
-   if (the_config == NULL || !the_config->is_parallel) {
-        return 0; 
+    if (the_config == NULL || !the_config->is_parallel) {  //on verifie qu'on est bien en parallele et que la configuration est valide
+        return 0; //sinon on retourne 0
     } else {
-        pid_t pid = fork();
-        if (pid == -1) {
-            return -1; 
-        } else if (pid == 0) {
-            
-           
-            return 0;
-        } else {
-            p_context->source_lister_pid = pid;
-            
+        key_t mq_key = ftok(".", 'M'); //on cree la cle pour la file de messages 
+        int message_queue_id = msgget(mq_key, IPC_CREAT | 0666); //creation de la file pour la communication entre les processus
+        if (message_queue_id == -1) { //verification des erreurs
+            printf("Erreur lors de la création de la file de messages");
+            return -1;
         }
 
-    return 0;
+        pid_t source_lister_pid = fork(); //on cree le processus en verifiant les erreurs
+        if (source_lister_pid == -1) {
+            printf("Erreur lors de la création du processus source lister");
+            return -1;
+        } else if (source_lister_pid == 0) { //on execute la fonction pour le processus fils
+            lister_process_loop(p_context); 
+            exit(0); 
+        }
+        p_context->message_queue_id = message_queue_id; //mise a jour du nouveau contexte des processus
+        p_context->source_lister_pid = source_lister_pid;
+
+        return 0;
     }
 }
-
 
 /*!
  * @brief make_process creates a process and returns its PID to the parent
