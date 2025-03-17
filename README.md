@@ -1,4 +1,8 @@
-Sujet en version du 7 novembre 2023
+Projet LP25 – 2ᵉ année de prépa intégrée à l'UTBM
+
+Langage(s) : C
+
+Voici le sujet réalisé :
 
 # Description succincte
 
